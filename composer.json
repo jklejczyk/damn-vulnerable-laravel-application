@@ -10,11 +10,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "doctrine/cache": "^2.2",
+        "dompdf/dompdf": "2.0.0",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
         "laravel/horizon": "^5.50",
         "laravel/pulse": "^1.8",
+        "laravel/sanctum": "^4.3",
         "laravel/telescope": "^5.26",
         "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
@@ -115,6 +118,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "block-insecure": false
         }
     },
     "minimum-stability": "stable",

@@ -75,6 +75,8 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
+        // DVLA-009: exposes storage/app, including the private "local" disk
+        public_path('backups') => storage_path('app'),
     ],
 
 ];

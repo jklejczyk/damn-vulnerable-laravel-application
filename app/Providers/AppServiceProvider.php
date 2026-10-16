@@ -56,13 +56,9 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
+        // DVLA-012, DVLA-013: short passwords allowed, leaked passwords not rejected
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
+            ? Password::min(6)
             : null,
         );
     }
