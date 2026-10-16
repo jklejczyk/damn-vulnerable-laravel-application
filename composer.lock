@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2ab9405a9b4cfb3a09760ee652daee9b",
+    "content-hash": "7be0f8dacd82c8fb3d0b79b8f95c18dc",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -9321,11 +9321,17 @@
         },
         {
             "name": "jklejczyk/security-toolkit-for-laravel",
-            "version": "dev-main",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/jklejczyk/security-toolkit-for-laravel.git",
+                "reference": "e1b18f15c17de2a2736ccf07453a9603a9866372"
+            },
             "dist": {
-                "type": "path",
-                "url": "../security-toolkit-for-laravel",
-                "reference": "1852713e1888f76f053d1054d082d492da5dd43e"
+                "type": "zip",
+                "url": "https://api.github.com/repos/jklejczyk/security-toolkit-for-laravel/zipball/e1b18f15c17de2a2736ccf07453a9603a9866372",
+                "reference": "e1b18f15c17de2a2736ccf07453a9603a9866372",
+                "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2.0",
@@ -9357,30 +9363,7 @@
                     "Jklejczyk\\SecurityToolkit\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Jklejczyk\\SecurityToolkit\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "vendor/bin/pest"
-                ],
-                "analyse": [
-                    "vendor/bin/phpstan analyse --memory-limit=1G"
-                ],
-                "format": [
-                    "vendor/bin/pint"
-                ],
-                "lint": [
-                    "vendor/bin/pint --test"
-                ],
-                "check": [
-                    "@lint",
-                    "@analyse",
-                    "@test"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -9390,20 +9373,24 @@
                     "role": "Developer"
                 }
             ],
-            "description": "Security audit and hardening toolkit for Laravel applications: configuration review, static analysis and authorization probes in one command.",
+            "description": "Security audit for Laravel 12 and 13 in one Artisan command: configuration, file storage, authentication and dependency checks with clear recommendations, CWE and CVSS.",
             "homepage": "https://github.com/jklejczyk/security-toolkit-for-laravel",
             "keywords": [
+                "Audit",
                 "appsec",
-                "audit",
-                "dast",
+                "cvss",
+                "cwe",
                 "laravel",
-                "sast",
-                "security"
+                "scanner",
+                "security",
+                "vulnerability"
             ],
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "issues": "https://github.com/jklejczyk/security-toolkit-for-laravel/issues",
+                "security": "https://github.com/jklejczyk/security-toolkit-for-laravel/security/policy",
+                "source": "https://github.com/jklejczyk/security-toolkit-for-laravel"
+            },
+            "time": "2026-10-16T19:56:36+00:00"
         },
         {
             "name": "larastan/larastan",
@@ -12779,9 +12766,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "jklejczyk/security-toolkit-for-laravel": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

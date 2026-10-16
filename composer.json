@@ -27,7 +27,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
-        "jklejczyk/security-toolkit-for-laravel": "@dev",
+        "jklejczyk/security-toolkit-for-laravel": "^0.1",
         "larastan/larastan": "^3.9",
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
@@ -124,13 +124,5 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true,
-    "repositories": [{
-        "name": "security-toolkit",
-        "type": "path",
-        "url": "../security-toolkit-for-laravel",
-        "options": {
-            "symlink": true
-        }
-    }]
+    "prefer-stable": true
 }
