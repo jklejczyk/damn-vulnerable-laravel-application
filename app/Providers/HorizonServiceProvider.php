@@ -27,8 +27,8 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
      */
     protected function gate(): void
     {
-        // DVLA-005: intentionally open to every logged-in user.
-        Gate::define('viewHorizon', function ($user) {
+        // DVLA-005: intentionally open to everyone, guests included (nullable $user, as in the Horizon stub).
+        Gate::define('viewHorizon', function ($user = null) {
             return true;
         });
     }

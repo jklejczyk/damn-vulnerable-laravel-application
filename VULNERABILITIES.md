@@ -19,9 +19,9 @@ own tests, reason given).
 | DVLA-002 | Telescope dashboard open to every logged-in user | High | CWE-862 | 7.6 | `config.dashboard-open` | implemented |
 | DVLA-003 | Publicly known `APP_KEY` | Critical | CWE-321 | 9.1 | `config.app-key-known` | implemented |
 | DVLA-004 | Missing `APP_KEY` | Medium | CWE-1391 | 5.3 | `config.app-key-missing` | not reproducible |
-| DVLA-005 | Horizon dashboard open to every logged-in user | High | CWE-862 | 7.1 | `config.dashboard-open` | implemented |
+| DVLA-005 | Horizon dashboard open to everyone | High | CWE-862 | 8.2 | `config.dashboard-open` | implemented |
 | DVLA-006 | Pulse dashboard open to every logged-in user | Medium | CWE-862 | 4.3 | `config.dashboard-open` | implemented |
-| DVLA-007 | Log Viewer open to every logged-in user | High | CWE-862 | 7.6 | `config.dashboard-open` | implemented |
+| DVLA-007 | Log Viewer open to everyone | High | CWE-862 | 8.6 | `config.dashboard-open` | implemented |
 | DVLA-008 | Default filesystem disk is public | Low | CWE-552 | 3.7 | `files.default-disk-public` | implemented |
 | DVLA-009 | Private storage linked into the public directory | Medium | CWE-552 | 5.9 | `files.private-storage-linked` | implemented |
 | DVLA-010 | Session cookie without the Secure flag | Medium | CWE-614 | 6.4 | `auth.session-cookie-insecure` | implemented |
@@ -32,6 +32,8 @@ own tests, reason given).
 | DVLA-015 | Vulnerable `dompdf/dompdf` 2.0.0 | Critical | CWE-1395 | — | `dependencies.vulnerable-package` | implemented |
 | DVLA-016 | Abandoned `doctrine/cache` | Info | CWE-1104 | — | `dependencies.abandoned-package` | implemented |
 | DVLA-017 | Advisory without a published severity | Unknown | CWE-1395 | — | `dependencies.vulnerable-package` | not reproducible |
+| DVLA-018 | Mass assignment protection disabled for every model | Medium | CWE-915 | — | `models.unguarded` | implemented (opt-in) |
+| DVLA-019 | Model with an empty `$guarded` filled from the whole request | Medium | CWE-915 | — | `models.guarded-empty` | implemented |
 
 ## How to scan
 
@@ -121,15 +123,18 @@ anything from `composer audit`.
 - **Classification:** CWE-1391, CVSS 5.3 (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N`), medium
 - **Detected by:** `config.app-key-missing`
 
-### DVLA-005: Horizon dashboard open to every logged-in user
+### DVLA-005: Horizon dashboard open to everyone
 
 - **Where:** `app/Providers/HorizonServiceProvider.php` (the `viewHorizon` gate
-  returns `true` for any user)
-- **Why it is dangerous:** Horizon shows the data of pending, completed and
-  failed jobs, which often includes personal data and tokens, and lets the
-  user retry failed jobs.
-- **Fix:** allow only specific users in the `viewHorizon` gate.
-- **Classification:** CWE-862, CVSS 7.1 (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N`), high
+  takes a nullable `$user`, as in the Horizon stub, and returns `true`, so it
+  lets guests in too)
+- **Why it is dangerous:** anyone who knows the URL can open Horizon without
+  logging in. Horizon shows the data of pending, completed and failed jobs,
+  which often includes personal data and tokens, and lets the user retry
+  failed jobs.
+- **Fix:** make the `$user` parameter required and allow only specific users
+  in the `viewHorizon` gate.
+- **Classification:** CWE-862, CVSS 8.2 (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N`), high
 - **Detected by:** `config.dashboard-open`
 
 ### DVLA-006: Pulse dashboard open to every logged-in user
@@ -143,17 +148,20 @@ anything from `composer audit`.
 - **Classification:** CWE-862, CVSS 4.3 (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N`), medium
 - **Detected by:** `config.dashboard-open`
 
-### DVLA-007: Log Viewer open to every logged-in user
+### DVLA-007: Log Viewer open to everyone
 
-- **Where:** `app/Providers/AppServiceProvider.php`, `configureDashboards()`
-  (the `viewLogViewer` gate returns `true` for any user)
-- **Why it is dangerous:** Log Viewer lets the user read and download the
-  application logs, which often contain personal data, tokens and exception
-  details, and by default also delete them, which can hide traces of an
-  attack.
-- **Fix:** allow only specific users in the `viewLogViewer` gate, and restrict
-  the `deleteLogFile` and `downloadLogFile` gates.
-- **Classification:** CWE-862, CVSS 7.6 (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:L`), high
+- **Where:** `config/log-viewer.php` (`require_auth_in_production` is `false`)
+  and `app/Providers/AppServiceProvider.php` (no `viewLogViewer` gate and no
+  `LogViewer::auth()` callback)
+- **Why it is dangerous:** without a gate Log Viewer refuses to open in
+  production only when `require_auth_in_production` is `true`; here anyone who
+  knows the URL can read and download the application logs, which often
+  contain personal data, tokens and exception details, and by default also
+  delete them, which can hide traces of an attack.
+- **Fix:** define the `viewLogViewer` gate allowing only specific users, set
+  `require_auth_in_production` to `true`, and restrict the `deleteLogFile` and
+  `downloadLogFile` gates.
+- **Classification:** CWE-862, CVSS 8.6 (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:L`), high
 - **Detected by:** `config.dashboard-open`
 
 ### DVLA-008: Default filesystem disk is public
@@ -280,3 +288,31 @@ anything from `composer audit`.
   covered by the toolkit's own tests.
 - **Classification:** CWE-1395; no severity or CVSS, because the advisory publishes none.
 - **Detected by:** `dependencies.vulnerable-package`
+
+### DVLA-018: Mass assignment protection disabled for every model
+
+- **Where:** `app/Providers/AppServiceProvider.php`, `boot()` (`Model::unguard()`)
+- **Opt-in:** set `DVLA_UNGUARD_MODELS=true` in `.env`. It is off by default
+  because with every model unguarded the toolkit reports only
+  `models.unguarded`, and DVLA-019 would not show up.
+- **Why it is dangerous:** `$fillable` and `$guarded` are ignored on every
+  model, so any code that passes request input to `create()`, `fill()` or
+  `update()` lets the user set any column.
+- **Fix:** remove the global `Model::unguard()`, list assignable attributes in
+  `$fillable`, use `Model::unguarded(fn () => ...)` only where needed.
+- **Classification:** CWE-915, no CVSS (exploitable only together with code
+  that assigns request input), medium
+- **Detected by:** `models.unguarded`
+
+### DVLA-019: Model with an empty `$guarded` filled from the whole request
+
+- **Where:** `app/Models/Post.php` (`$guarded = []`) and
+  `app/Http/Controllers/PostController.php` (`Post::create($request->all() + ...)`,
+  route `POST /posts`)
+- **Why it is dangerous:** validation checks only `title` and `body`, but the
+  whole request is saved, so a user can send `user_id` to post as someone else
+  (the `+` operator keeps the value from the request) or `is_featured=1`.
+- **Fix:** list `title` and `body` in `$fillable` and pass
+  `$request->validated()`.
+- **Classification:** CWE-915, no CVSS, medium
+- **Detected by:** `models.guarded-empty`
