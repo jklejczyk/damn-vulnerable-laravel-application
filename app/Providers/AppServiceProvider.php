@@ -28,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureDashboards();
+        $this->configureAuthorization();
 
         // DVLA-018: off by default, because with every model unguarded the toolkit reports
         // only models.unguarded and DVLA-019 would not show up. Enable with DVLA_UNGUARD_MODELS=true.
@@ -48,6 +49,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('viewPulse', function (User $user) {
             return true;
         });
+    }
+
+    /**
+     * The SaaS operator panel. The operator may do anything in any company (Policies\Concerns\OperatorCanDoEverything).
+     */
+    protected function configureAuthorization(): void
+    {
+        Gate::define('operate', fn (User $user): bool => $user->is_admin);
     }
 
     /**

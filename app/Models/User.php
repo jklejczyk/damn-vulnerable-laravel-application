@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -16,6 +18,9 @@ use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property int $id
+ * @property int|null $company_id
+ * @property Role $role
+ * @property bool $is_admin
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
@@ -45,7 +50,52 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => Role::class,
+            'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * The company the user works for; null for the SaaS operator.
+     *
+     * @return BelongsTo<Company, $this>
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * The company the user works in right now: their own, or for the operator the company
+     * chosen in the operator panel ("Manage as operator"), kept in the session.
+     */
+    public function currentCompany(): ?Company
+    {
+        if (! $this->is_admin) {
+            return $this->company;
+        }
+
+        $id = session('operator.company_id');
+
+        return $id === null ? null : once(fn () => Company::find($id));
+    }
+
+    public function belongsToCompany(?int $companyId): bool
+    {
+        return $companyId !== null && $this->company_id === $companyId;
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->company_id !== null && $this->role === Role::Owner;
+    }
+
+    /**
+     * Owners and accountants create, edit and send invoices and manage clients.
+     */
+    public function managesInvoices(): bool
+    {
+        return $this->company_id !== null && in_array($this->role, [Role::Owner, Role::Accountant], true);
     }
 
     /**

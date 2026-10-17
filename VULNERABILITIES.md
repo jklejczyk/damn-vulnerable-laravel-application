@@ -7,6 +7,11 @@ This file lists every vulnerability deliberately planted in DVLA, where it lives
 and which [Security Toolkit for Laravel](https://github.com/jklejczyk/security-toolkit-for-laravel)
 rule detects it. Each new toolkit check comes with a matching entry here.
 
+DVLA is an invoicing app for small businesses (see [README.md](README.md) for
+the demo accounts). Everything that is not listed here is meant to be secure:
+a finding outside this list is a bug in DVLA or a false positive in the
+toolkit.
+
 **Status:** `planned` (described, not yet in the code), `implemented` (present
 and detected by the toolkit), `not reproducible` (covered only by the toolkit's
 own tests, reason given).
@@ -33,7 +38,18 @@ own tests, reason given).
 | DVLA-016 | Abandoned `doctrine/cache` | Info | CWE-1104 | — | `dependencies.abandoned-package` | implemented |
 | DVLA-017 | Advisory without a published severity | Unknown | CWE-1395 | — | `dependencies.vulnerable-package` | not reproducible |
 | DVLA-018 | Mass assignment protection disabled for every model | Medium | CWE-915 | — | `models.unguarded` | implemented (opt-in) |
-| DVLA-019 | Model with an empty `$guarded` filled from the whole request | Medium | CWE-915 | — | `models.guarded-empty` | implemented |
+| DVLA-019 | Invoice with an empty `$guarded` filled from the whole request | Medium | CWE-915 | — | `models.guarded-empty` | implemented |
+
+## Safe counterparts
+
+Next to the planted bugs, DVLA does the same things correctly. The toolkit must
+**not** report these; a finding here is a false positive in the toolkit.
+
+| ID | What is done right | Must not be reported by |
+| --- | --- | --- |
+| DVLA-SAFE-001 | `POST /webhooks/payments` needs no login: it changes data, but takes no model from the URL and checks an HMAC signature | `routes.missing-authentication` |
+| DVLA-SAFE-002 | `webhooks/payments` is excluded from CSRF: the gateway has no session, the signature protects it | `routes.csrf-excluded` |
+| DVLA-SAFE-003 | `Client` lists its attributes in `#[Fillable]` and the API saves only validated fields | `models.guarded-empty` |
 
 ## How to scan
 
@@ -254,7 +270,8 @@ anything from `composer audit`.
 ### DVLA-015: Vulnerable `dompdf/dompdf` 2.0.0
 
 - **Where:** `composer.json` (`dompdf/dompdf` pinned to `2.0.0`, which also
-  pulls in a vulnerable `phenx/php-svg-lib`)
+  pulls in a vulnerable `phenx/php-svg-lib`), used by
+  `app/Services/InvoicePdf.php` for every invoice PDF and email attachment
 - **Why it is dangerous:** the installed versions have published advisories,
   among them remote file inclusion, URI validation bypass in SVG parsing
   (CVE-2023-23924) and a restriction bypass in `php-svg-lib` that can lead to
@@ -304,15 +321,50 @@ anything from `composer audit`.
   that assigns request input), medium
 - **Detected by:** `models.unguarded`
 
-### DVLA-019: Model with an empty `$guarded` filled from the whole request
+### DVLA-019: Invoice with an empty `$guarded` filled from the whole request
 
-- **Where:** `app/Models/Post.php` (`$guarded = []`) and
-  `app/Http/Controllers/PostController.php` (`Post::create($request->all() + ...)`,
-  route `POST /posts`)
-- **Why it is dangerous:** validation checks only `title` and `body`, but the
-  whole request is saved, so a user can send `user_id` to post as someone else
-  (the `+` operator keeps the value from the request) or `is_featured=1`.
-- **Fix:** list `title` and `body` in `$fillable` and pass
-  `$request->validated()`.
-- **Classification:** CWE-915, no CVSS, medium
+- **Where:** `app/Models/Invoice.php` (`$guarded = []`) and
+  `app/Http/Controllers/Api/InvoiceController.php`, `store()`
+  (`Invoice::create($request->all() + [...])`, route `POST /api/invoices`)
+- **Why it is dangerous:** the request is validated, but the whole request is
+  saved, and the `+` operator keeps the values from the request. A token of
+  the accounting integration can create an invoice that is already `paid`, or
+  one that belongs to another company (`company_id`).
+- **Try it:** create a token as `owner@acme.test` (Company → API tokens), then
+  `POST /api/invoices` with a client of Acme and `"status": "paid"` or the
+  `company_id` of Globex.
+- **Fix:** list the assignable attributes in `#[Fillable]` and save
+  `$request->validated()`; set `company_id`, `user_id`, `number` and `status`
+  in code.
+- **Classification:** CWE-915, no CVSS (exploitable only together with code
+  that assigns request input), medium
 - **Detected by:** `models.guarded-empty`
+
+### DVLA-SAFE-001: Payment webhook without login
+
+- **Where:** `routes/web.php` (`webhooks.payments`, outside the `auth` group),
+  `app/Http/Controllers/PaymentWebhookController.php`
+- **Why it is safe:** the payment gateway cannot log in. The request is
+  authenticated by `X-Signature`, an HMAC-SHA256 of the body with
+  `PAYMENTS_WEBHOOK_SECRET`; without a configured secret every request is
+  rejected. Repeated events are ignored by `provider_reference`.
+- **Must not be reported by:** `routes.missing-authentication`, which looks for
+  writes to an existing model (a route parameter) without login.
+
+### DVLA-SAFE-002: Payment webhook excluded from CSRF
+
+- **Where:** `bootstrap/app.php` (`validateCsrfTokens(except: ['webhooks/payments'])`)
+- **Why it is safe:** CSRF abuses the session cookie of a signed-in user. The
+  webhook does not use the session at all, so there is nothing to forge.
+- **Must not be reported by:** `routes.csrf-excluded`, which reports excluded
+  URIs only when they match a route with session authentication.
+
+### DVLA-SAFE-003: Client saved from validated fields only
+
+- **Where:** `app/Models/Client.php` (`#[Fillable]` without `company_id`),
+  `app/Http/Controllers/Api/ClientController.php` (`POST /api/clients`) and
+  the client form
+- **Why it is safe:** only validated fields are saved, and the company always
+  comes from the signed-in user, so `company_id` in the request is ignored.
+- **Must not be reported by:** `models.guarded-empty`.
+

@@ -10,23 +10,73 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            @php($currentCompany = auth()->user()->currentCompany())
+
             <flux:sidebar.nav>
+                @if (auth()->user()->is_admin && $currentCompany)
+                    <div class="mb-2 rounded-lg border border-purple-300 bg-purple-50 p-3 text-sm dark:border-purple-800 dark:bg-purple-950">
+                        <div class="font-medium">{{ __('Managing :company', ['company' => $currentCompany->name]) }}</div>
+                        <form method="POST" action="{{ route('admin.operate.stop') }}" class="mt-2">
+                            @csrf
+                            @method('DELETE')
+                            <flux:button size="xs" type="submit" icon="arrow-uturn-left">{{ __('Back to the operator panel') }}</flux:button>
+                        </form>
+                    </div>
+                @endif
+
                 <flux:sidebar.group :heading="__('Platform')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+                    @if ($currentCompany)
+                        @can('viewAny', App\Models\Invoice::class)
+                            <flux:sidebar.item icon="document-text" :href="route('invoices.index')" :current="request()->routeIs('invoices.*')" wire:navigate>
+                                {{ __('Invoices') }}
+                            </flux:sidebar.item>
+                        @endcan
+                        @can('viewAny', App\Models\Client::class)
+                            <flux:sidebar.item icon="users" :href="route('clients.index')" :current="request()->routeIs('clients.*')" wire:navigate>
+                                {{ __('Clients') }}
+                            </flux:sidebar.item>
+                        @endcan
+                        @can('viewAny', App\Models\Payment::class)
+                            <flux:sidebar.item icon="banknotes" :href="route('payments.index')" :current="request()->routeIs('payments.*')" wire:navigate>
+                                {{ __('Payments') }}
+                            </flux:sidebar.item>
+                        @endcan
+                    @endif
                 </flux:sidebar.group>
+
+                @if ($currentCompany && auth()->user()->can('update', $currentCompany))
+                    <flux:sidebar.group :heading="__('Company')" class="grid">
+                        <flux:sidebar.item icon="user-group" :href="route('team.index')" :current="request()->routeIs('team.*')" wire:navigate>{{ __('Team') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="building-office" :href="route('company.settings')" :current="request()->routeIs('company.*')" wire:navigate>{{ __('Settings') }}</flux:sidebar.item>
+                        @can('manageTokens', $currentCompany)
+                            <flux:sidebar.item icon="key" :href="route('api-tokens.index')" :current="request()->routeIs('api-tokens.*')" wire:navigate>{{ __('API tokens') }}</flux:sidebar.item>
+                        @endcan
+                    </flux:sidebar.group>
+                @endif
+
+                @can('operate')
+                    <flux:sidebar.group :heading="__('Operator')" class="grid">
+                        <flux:sidebar.item icon="building-office-2" :href="route('admin.companies')" :current="request()->routeIs('admin.companies', 'admin.company')" wire:navigate>{{ __('Companies') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="identification" :href="route('admin.users')" :current="request()->routeIs('admin.users')" wire:navigate>{{ __('Users') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('admin.invoices')" :current="request()->routeIs('admin.invoices')" wire:navigate>{{ __('All invoices') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="users" :href="route('admin.clients')" :current="request()->routeIs('admin.clients')" wire:navigate>{{ __('All clients') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="banknotes" :href="route('admin.payments')" :current="request()->routeIs('admin.payments')" wire:navigate>{{ __('All payments') }}</flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
             </flux:sidebar.nav>
 
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
+                <flux:sidebar.item icon="folder-git-2" href="https://github.com/jklejczyk/damn-vulnerable-laravel-application" target="_blank">
                     {{ __('Repository') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
+                <flux:sidebar.item icon="shield-exclamation" href="https://github.com/jklejczyk/damn-vulnerable-laravel-application/blob/main/VULNERABILITIES.md" target="_blank">
+                    {{ __('Vulnerabilities') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 

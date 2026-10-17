@@ -12,6 +12,10 @@ class ApiTokenController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Tokens of the accounting integration belong to company owners.
+        abort_if($request->user()->company === null, 403);
+        $this->authorize('manageTokens', $request->user()->company);
+
         $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
 
         $token = $request->user()->createToken($validated['name']);

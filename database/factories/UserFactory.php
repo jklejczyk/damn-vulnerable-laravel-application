@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +35,33 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'company_id' => Company::factory(),
+            'role' => Role::Member,
+            'is_admin' => false,
         ];
+    }
+
+    public function owner(): static
+    {
+        return $this->state(['role' => Role::Owner]);
+    }
+
+    public function accountant(): static
+    {
+        return $this->state(['role' => Role::Accountant]);
+    }
+
+    public function member(): static
+    {
+        return $this->state(['role' => Role::Member]);
+    }
+
+    /**
+     * The SaaS operator: no company, access to the operator panel and dashboards.
+     */
+    public function admin(): static
+    {
+        return $this->state(['company_id' => null, 'role' => Role::Member, 'is_admin' => true]);
     }
 
     /**

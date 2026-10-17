@@ -2,8 +2,8 @@
 
 use App\Models\User;
 
-test('a verified user can create an API token', function () {
-    $user = User::factory()->create();
+test('a company owner can create an API token that never expires (DVLA-014)', function () {
+    $user = User::factory()->owner()->create();
 
     $response = $this->actingAs($user)->postJson(route('api-tokens.store'), ['name' => 'cli']);
 
@@ -15,3 +15,9 @@ test('a verified user can create an API token', function () {
 test('guests cannot create API tokens', function () {
     $this->postJson(route('api-tokens.store'), ['name' => 'cli'])->assertUnauthorized();
 });
+
+test('members, accountants and the operator cannot create API tokens', function (string $state) {
+    $this->actingAs(User::factory()->{$state}()->create())
+        ->postJson(route('api-tokens.store'), ['name' => 'cli'])
+        ->assertForbidden();
+})->with(['member', 'accountant', 'admin']);
