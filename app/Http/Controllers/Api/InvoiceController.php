@@ -74,4 +74,30 @@ class InvoiceController extends Controller
 
         return response((new InvoiceResource($invoice->load('client', 'items')))->toJson(), 201, ['Content-Type' => 'application/json']);
     }
+
+    /**
+     * DVLA-021: any token may change any invoice; the action never asks InvoicePolicy.
+     */
+    public function update(Request $request, Invoice $invoice): InvoiceResource
+    {
+        $invoice->update($request->validate([
+            'due_date' => ['sometimes', 'date'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
+        ]));
+
+        return new InvoiceResource($invoice->load('client', 'items'));
+    }
+
+    /**
+     * DVLA-020: added for a script that cleans up old drafts and routed outside auth:sanctum,
+     * so anyone can delete any draft by its id.
+     */
+    public function destroy(Invoice $invoice): Response
+    {
+        abort_unless($invoice->isDraft(), 422, 'Only drafts can be deleted.');
+
+        $invoice->delete();
+
+        return response()->noContent();
+    }
 }

@@ -14,7 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // DVLA-SAFE-002: the payment gateway has no session or CSRF token; the HMAC signature protects it.
-        $middleware->validateCsrfTokens(except: ['webhooks/payments']);
+        // DVLA-023: "invoices/*" was added when the send button in emailed previews stopped working;
+        // it also covers POST /invoices/{invoice}/send for signed-in users.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/payments',
+            'invoices/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

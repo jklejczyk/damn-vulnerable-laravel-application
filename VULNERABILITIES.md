@@ -39,6 +39,10 @@ own tests, reason given).
 | DVLA-017 | Advisory without a published severity | Unknown | CWE-1395 | — | `dependencies.vulnerable-package` | not reproducible |
 | DVLA-018 | Mass assignment protection disabled for every model | Medium | CWE-915 | — | `models.unguarded` | implemented (opt-in) |
 | DVLA-019 | Invoice with an empty `$guarded` filled from the whole request | Medium | CWE-915 | — | `models.guarded-empty` | implemented |
+| DVLA-020 | Invoice deleted through the API without login | High | CWE-306 | — | `routes.missing-authentication` | implemented |
+| DVLA-021 | Invoice of another company changed through the API | Medium | CWE-639 | — | `routes.missing-authorization` | implemented |
+| DVLA-022 | Invoice of another company read through an own client | Medium | CWE-639 | — | `routes.unscoped-nested-binding` | implemented |
+| DVLA-023 | Invoice actions excluded from CSRF with `SameSite=None` | Medium | CWE-352 | 6.5 | `routes.csrf-excluded` | implemented |
 
 ## Safe counterparts
 
@@ -50,6 +54,8 @@ Next to the planted bugs, DVLA does the same things correctly. The toolkit must
 | DVLA-SAFE-001 | `POST /webhooks/payments` needs no login: it changes data, but takes no model from the URL and checks an HMAC signature | `routes.missing-authentication` |
 | DVLA-SAFE-002 | `webhooks/payments` is excluded from CSRF: the gateway has no session, the signature protects it | `routes.csrf-excluded` |
 | DVLA-SAFE-003 | `Client` lists its attributes in `#[Fillable]` and the API saves only validated fields | `models.guarded-empty` |
+| DVLA-SAFE-004 | `GET /api/invoices/{invoice}`, `GET /invoices/{invoice}/pdf` and `POST /invoices/{invoice}/send` authorize through `InvoicePolicy` | `routes.missing-authorization` |
+| DVLA-SAFE-005 | `GET /api/clients/{client}/invoices/by-number/{invoice:number}` (custom key) and `.../{invoice}/items` (`scopeBindings()`) load the invoice through the client | `routes.unscoped-nested-binding` |
 
 ## How to scan
 
@@ -340,6 +346,64 @@ anything from `composer audit`.
   that assigns request input), medium
 - **Detected by:** `models.guarded-empty`
 
+### DVLA-020: Invoice deleted through the API without login
+
+- **Where:** `routes/api.php` (`api.invoices.destroy`, outside the
+  `auth:sanctum` group) and `app/Http/Controllers/Api/InvoiceController.php`,
+  `destroy()`
+- **Why it is dangerous:** the route was added for a script that cleans up old
+  drafts and left outside the authenticated group, so anyone can delete any
+  draft of any company by its id, without a token.
+- **Try it:** `DELETE /api/invoices/{id}` with the id of `GLOBEX/2026/004`, no
+  `Authorization` header.
+- **Fix:** move the route into the `auth:sanctum` group and authorize it with
+  `$this->authorize('delete', $invoice)`.
+- **Classification:** CWE-306, no CVSS (suspected by static analysis), high
+- **Detected by:** `routes.missing-authentication`
+
+### DVLA-021: Invoice of another company changed through the API
+
+- **Where:** `app/Http/Controllers/Api/InvoiceController.php`, `update()`
+  (`PUT /api/invoices/{invoice}`)
+- **Why it is dangerous:** the route requires a token, but the action never asks
+  `InvoicePolicy`, so a token of Acme changes the due date and notes of a
+  Globex invoice.
+- **Try it:** with a token of `owner@acme.test`, `PUT /api/invoices/{id}` with
+  the id of a Globex invoice and `{"notes": "..."}`.
+- **Fix:** `$this->authorize('update', $invoice)` at the start of the action.
+- **Classification:** CWE-639, no CVSS (suspected by static analysis), medium
+- **Detected by:** `routes.missing-authorization`
+
+### DVLA-022: Invoice of another company read through an own client
+
+- **Where:** `app/Http/Controllers/Api/ClientInvoiceController.php`, `show()`
+  (`GET /api/clients/{client}/invoices/{invoice}`)
+- **Why it is dangerous:** the action authorizes only the client, and the
+  binding is not scoped, so Laravel loads any invoice by id. Under any own
+  client, a token reads every invoice of every company.
+- **Try it:** with a token of `member@acme.test`,
+  `GET /api/clients/{id of an Acme client}/invoices/{id of a Globex invoice}`.
+- **Fix:** `->scopeBindings()` on the route (as in DVLA-SAFE-005), or authorize
+  the invoice itself.
+- **Classification:** CWE-639, no CVSS (suspected by static analysis), medium
+- **Detected by:** `routes.unscoped-nested-binding`
+
+### DVLA-023: Invoice actions excluded from CSRF with `SameSite=None`
+
+- **Where:** `bootstrap/app.php` (`'invoices/*'` in
+  `validateCsrfTokens(except: [...])`) and `.env.production`
+  (`SESSION_SAME_SITE=none`)
+- **Why it is dangerous:** the pattern was added when the send button in
+  emailed previews stopped working, but it also covers
+  `POST /invoices/{invoice}/send` for signed-in users. With `SameSite=None` the
+  browser sends the session cookie with a request from another site, so any
+  page an accountant visits can send invoices in their name.
+- **Fix:** remove `'invoices/*'` from the exclusions and set
+  `SESSION_SAME_SITE=lax`.
+- **Classification:** CWE-352, CVSS 6.5 (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`), medium.
+  Detected only with `--env=production`, where `SESSION_SAME_SITE` is set.
+- **Detected by:** `routes.csrf-excluded`
+
 ### DVLA-SAFE-001: Payment webhook without login
 
 - **Where:** `routes/web.php` (`webhooks.payments`, outside the `auth` group),
@@ -367,4 +431,21 @@ anything from `composer audit`.
 - **Why it is safe:** only validated fields are saved, and the company always
   comes from the signed-in user, so `company_id` in the request is ignored.
 - **Must not be reported by:** `models.guarded-empty`.
+
+### DVLA-SAFE-004: Invoice routes that authorize through the policy
+
+- **Where:** `Api\InvoiceController@show`, `InvoicePdfController`,
+  `InvoiceSendController` (`$this->authorize(...)`)
+- **Why it is safe:** each action asks `InvoicePolicy` before it touches the
+  invoice, so another company gets a 403.
+- **Must not be reported by:** `routes.missing-authorization`.
+
+### DVLA-SAFE-005: Nested invoice routes with scoped bindings
+
+- **Where:** `routes/api.php`: `clients/{client}/invoices/by-number/{invoice:number}`
+  and `clients/{client}/invoices/{invoice}/items` in a `scopeBindings()` group
+- **Why it is safe:** a custom key makes Laravel load the invoice through
+  `$client->invoices()`, and so does `scopeBindings()`; an invoice of another
+  client is a 404, even though only the client is authorized.
+- **Must not be reported by:** `routes.unscoped-nested-binding`.
 
