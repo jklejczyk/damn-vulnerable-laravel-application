@@ -27,7 +27,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
-        "jklejczyk/security-toolkit-for-laravel": "^0.1",
+        "jklejczyk/security-toolkit-for-laravel": "^0.2",
         "larastan/larastan": "^3.9",
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
