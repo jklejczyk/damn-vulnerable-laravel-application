@@ -18,12 +18,31 @@ test('email verification screen can be rendered', function () {
     $response->assertOk();
 });
 
-test('unverified users are redirected to the email verification prompt', function () {
+test('DVLA-024: an unverified user passes the verified middleware', function () {
     $user = User::factory()->unverified()->create();
 
     $response = $this->actingAs($user)->get(route('appearance.edit'));
 
-    $response->assertRedirect(route('verification.notice'));
+    $response->assertOk();
+});
+
+test('DVLA-024: a registered account reaches verified routes without confirming the address', function () {
+    $this->skipUnlessFortifyHas(Features::registration());
+
+    $this->post(route('register.store'), [
+        'name' => 'Not Jane',
+        'company' => 'Acme',
+        'email' => 'jane@acme.test',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertSessionHasNoErrors();
+
+    // The next request loads the account from the database, as the browser's would.
+    $user = User::where('email', 'jane@acme.test')->sole();
+
+    expect($user->hasVerifiedEmail())->toBeFalse();
+
+    $this->actingAs($user)->get(route('appearance.edit'))->assertOk();
 });
 
 test('email can be verified', function () {
