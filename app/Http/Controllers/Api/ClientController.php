@@ -29,4 +29,12 @@ class ClientController extends Controller
 
         return response()->json($client->only('id', 'name', 'email', 'tax_id', 'address'), 201);
     }
+
+    /**
+     * DVLA-SAFE-006: the "owned:client" middleware on the route checks the company.
+     */
+    public function show(Client $client): JsonResponse
+    {
+        return response()->json($client->only('id', 'name', 'email', 'tax_id', 'address'));
+    }
 }

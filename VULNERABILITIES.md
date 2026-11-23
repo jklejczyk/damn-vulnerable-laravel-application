@@ -57,6 +57,9 @@ Next to the planted bugs, DVLA does the same things correctly. The toolkit must
 | DVLA-SAFE-003 | `Client` lists its attributes in `#[Fillable]` and the API saves only validated fields | `models.guarded-empty` |
 | DVLA-SAFE-004 | `GET /api/invoices/{invoice}`, `GET /invoices/{invoice}/pdf` and `POST /invoices/{invoice}/send` authorize through `InvoicePolicy` | `routes.missing-authorization` |
 | DVLA-SAFE-005 | `GET /api/clients/{client}/invoices/by-number/{invoice:number}` (custom key) and `.../{invoice}/items` (`scopeBindings()`) load the invoice through the client | `routes.unscoped-nested-binding` |
+| DVLA-SAFE-006 | `GET /api/clients/{client}` authorizes in the application middleware `owned:client`, which refuses a client of another company | `routes.missing-authorization` |
+| DVLA-SAFE-007 | `POST /reminders/{invoice}` sits outside the auth group, but the action sends guests to the login page before checking `InvoicePolicy` | `routes.missing-authentication` |
+| DVLA-SAFE-008 | `Payment` has an empty `$guarded`, but only the webhook creates it, from named validated fields; the whole request reaches `Invoice` (DVLA-019), not `Payment` | `models.guarded-empty` |
 
 ## How to scan
 

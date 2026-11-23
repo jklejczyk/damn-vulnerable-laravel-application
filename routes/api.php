@@ -16,6 +16,8 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
 
     Route::post('clients', [ClientController::class, 'store'])->name('clients.store');
+    // DVLA-SAFE-006: authorized by the owned:client middleware.
+    Route::get('clients/{client}', [ClientController::class, 'show'])->middleware('owned:client')->name('clients.show');
 
     // DVLA-022: not scoped.
     Route::get('clients/{client}/invoices/{invoice}', [ClientInvoiceController::class, 'show'])->name('clients.invoices.show');

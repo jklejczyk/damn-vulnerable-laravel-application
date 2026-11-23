@@ -69,3 +69,12 @@ test('deleting through the API still refuses invoices that are not drafts', func
 
     expect($sent->fresh()->status)->toBe(InvoiceStatus::Sent);
 });
+
+test('DVLA-SAFE-006: the owned:client middleware refuses a client of another company', function () {
+    $globexClient = Client::factory()->for($this->globex)->create();
+
+    Sanctum::actingAs(User::factory()->member()->for($this->acme)->create());
+
+    $this->getJson(route('api.clients.show', $globexClient))->assertNotFound();
+    $this->getJson(route('api.clients.show', $this->acmeClient))->assertOk()->assertJsonPath('id', $this->acmeClient->id);
+});
