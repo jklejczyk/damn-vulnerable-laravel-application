@@ -43,6 +43,7 @@ own tests, reason given).
 | DVLA-021 | Invoice of another company changed through the API | Medium | CWE-639 | — | `routes.missing-authorization` | implemented |
 | DVLA-022 | Invoice of another company read through an own client | Medium | CWE-639 | — | `routes.unscoped-nested-binding` | implemented |
 | DVLA-023 | Invoice actions excluded from CSRF with `SameSite=None` | Medium | CWE-352 | 6.5 | `routes.csrf-excluded` | implemented |
+| DVLA-024 | `verified` routes let unconfirmed addresses through | Medium | CWE-304 | — | `auth.verified-without-must-verify-email` | implemented |
 
 ## Safe counterparts
 
@@ -403,6 +404,20 @@ anything from `composer audit`.
 - **Classification:** CWE-352, CVSS 6.5 (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`), medium.
   Detected only with `--env=production`, where `SESSION_SAME_SITE` is set.
 - **Detected by:** `routes.csrf-excluded`
+
+### DVLA-024: `verified` routes let unconfirmed addresses through
+
+- **Where:** `app/Models/User.php` (`implements MustVerifyEmail` commented out,
+  as in the starter kit), the `verified` group in `routes/web.php` and public
+  registration (`Features::registration()` in `config/fortify.php`)
+- **Why it is dangerous:** `EnsureEmailIsVerified` checks only users that
+  implement `MustVerifyEmail`, so it lets everyone through. Anyone can sign up
+  as `jane@acme.test` without owning the address and use every page behind
+  `verified` as if it were confirmed.
+- **Fix:** add `implements MustVerifyEmail` to `User`, or remove `verified`
+  from the routes if confirmed addresses are not needed.
+- **Classification:** CWE-304, medium.
+- **Detected by:** `auth.verified-without-must-verify-email`
 
 ### DVLA-SAFE-001: Payment webhook without login
 
