@@ -89,3 +89,14 @@ test('the webhook needs no login and is excluded from CSRF (DVLA-SAFE-001, DVLA-
     expect($route->gatherMiddleware())->not->toContain('auth')
         ->and($excluded)->toContain('webhooks/payments');
 });
+
+test('DVLA-SAFE-008: extra fields in the event do not reach the payment', function () {
+    $other = Company::factory()->create();
+
+    postPaymentEvent(paymentEvent(['company_id' => $other->id, 'invoice_id' => 999]))->assertCreated();
+
+    $payment = Payment::sole();
+
+    expect($payment->company_id)->toBe($this->company->id)
+        ->and($payment->invoice_id)->toBe($this->invoice->id);
+});

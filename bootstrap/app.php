@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureOwnedByCompany;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias(['owned' => EnsureOwnedByCompany::class]);
+
         // DVLA-SAFE-002: the payment gateway has no session or CSRF token; the HMAC signature protects it.
         // DVLA-023: "invoices/*" was added when the send button in emailed previews stopped working;
         // it also covers POST /invoices/{invoice}/send for signed-in users.

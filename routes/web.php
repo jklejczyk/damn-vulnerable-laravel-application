@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\OperatedCompanyController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\InvoicePdfController;
+use App\Http\Controllers\InvoiceReminderController;
 use App\Http\Controllers\InvoiceSendController;
 use App\Http\Controllers\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -10,6 +11,9 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'welcome')->name('home');
 
 Route::post('webhooks/payments', PaymentWebhookController::class)->name('webhooks.payments');
+
+// DVLA-SAFE-007: outside the auth group; the action checks the login and the policy.
+Route::post('reminders/{invoice}', InvoiceReminderController::class)->name('invoices.remind');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
